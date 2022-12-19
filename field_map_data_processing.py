@@ -71,17 +71,19 @@ class FieldMapDataProcessing:
         if sol.x[5] < tol:
             sol.x[5] = 0
 
-        print(f"x[0] = a  = {sol.x[0]} m")
-        print(f"x[1] = b  = {sol.x[1]} m")
-        print(f"x[2] = c  = {sol.x[2]} m")
-        print(f"x[3] = mx = {sol.x[3]}")
-        print(f"x[4] = my = {sol.x[4]}")
-        print(f"x[5] = mz = {sol.x[5]}")
+        finalString = ""
+        finalString.append(f"x[0] = a  = {sol.x[0]} m\n")
+        finalString.append(f"x[1] = b  = {sol.x[1]} m\n")
+        finalString.append(f"x[2] = c  = {sol.x[2]} m\n")
+        finalString.append(f"x[3] = mx = {sol.x[3]}\n")
+        finalString.append(f"x[4] = my = {sol.x[4]}\n")
+        finalString.append(f"x[5] = mz = {sol.x[5]}\n")
 
         mag = np.sqrt(sol.x[3]**2+sol.x[4]**2+sol.x[5]**2)
 
-        print(f"\nmagnitude: {mag} Am^2")
+        finalString.append(f"\nmagnitude: {mag} Am^2\n")
 
+        return finalString
 
     def lmfit(self):
         """
@@ -141,7 +143,7 @@ class FieldMapDataProcessing:
         params.add('mz',value=0.5, min=-10.0, max=10.0)
 
         result = dipoleModel.fit(magFieldDataFinal, params, x=xFinal, y=yFinal, z=zFinal, d=dFinal)
-        print(result.fit_report())
+        return result.fit_report()
 
 
     def plotField(self):
