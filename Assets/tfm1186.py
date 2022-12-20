@@ -1,4 +1,4 @@
-# import pyvisa as visa
+import pyvisa as visa
 import numpy as np
 
 class TFM1186:

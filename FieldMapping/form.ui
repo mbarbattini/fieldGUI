@@ -543,6 +543,7 @@ color: rgb(0, 0, 0);</string>
     </property>
     <property name="styleSheet">
      <string notr="true">color: rgb(0, 0, 0);
+font: 12pt &quot;Segoe UI&quot;;
 background-color: rgb(0, 255, 127);</string>
     </property>
     <property name="text">
@@ -613,6 +614,7 @@ background-color: rgb(0, 255, 127);</string>
     </property>
     <property name="styleSheet">
      <string notr="true">color: rgb(0, 0, 0);
+font: 10pt &quot;Segoe UI&quot;;
 background-color: rgb(0, 255, 127);</string>
     </property>
     <property name="text">
@@ -738,14 +740,14 @@ color: rgb(0, 0, 0);</string>
     <property name="geometry">
      <rect>
       <x>560</x>
-      <y>410</y>
-      <width>101</width>
-      <height>51</height>
+      <y>360</y>
+      <width>111</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="styleSheet">
      <string notr="true">color: rgb(0, 0, 0);
-font: 16pt &quot;Segoe UI&quot;;
+font: 12pt &quot;Segoe UI&quot;;
 background-color: rgb(255, 32, 73);</string>
     </property>
     <property name="text">
@@ -790,6 +792,59 @@ background-color: rgb(255, 32, 73);</string>
       </property>
      </widget>
     </widget>
+   </widget>
+   <widget class="QPushButton" name="saveDataButton">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>470</y>
+      <width>111</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(0, 0, 0);
+font: 12pt &quot;Segoe UI&quot;;
+background-color: rgb(0, 255, 127);</string>
+    </property>
+    <property name="text">
+     <string>Save Data</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="lineEdit">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>470</y>
+      <width>181</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">font: 12pt &quot;Segoe UI&quot;;
+color: rgb(0, 0, 0);
+background-color: rgb(255, 255, 255);</string>
+    </property>
+    <property name="text">
+     <string>Experiment1</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_6">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>471</y>
+      <width>131</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">font: 12pt &quot;Segoe UI&quot;;
+color: rgb(0, 0, 0);</string>
+    </property>
+    <property name="text">
+     <string>Save Folder Name:</string>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">

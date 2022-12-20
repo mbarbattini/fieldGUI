@@ -1,34 +1,50 @@
+"""
+Field mapping application for calculating the effective dipole moment of an object.
+Created by Matthew Barbattini on 12/20/22
+
+Uses the three-axis newmark position robot and the newmark rotation robot.
+
+Dependencies:
+PyQt5: UI
+pyvisa: VISA for communicating with the magnetometer
+NSCG3: a newmark motion controller wrapper to send commands and communicate
+TFM1186: a wrapper for the MetroLab TFM1186 vector magnetometer and USB adapter TFM1176
+AutoMap: Abstract base class for mapping objects
+NonRotationalMap: class for creating mapping objects that do not involve rotations
+RotationalMap: class for creating mapping objects that have rotations
+LMFIT: a python class for an improvement to the Levenber-Marquardt algorithm
+ortools: math functions for route optimization
+gclib: driver for communicating with newmark controllers
+"""
+
+
 from PyQt5 import uic 
 from PyQt5.QtWidgets import QMainWindow, QApplication
 import sys
 import os
 import numpy as np
 from Assets.nscg3 import NSCG3
-from field_map_data_processing import FieldMapDataProcessing
+from non_rotational_map import NonRotationalMap
 from rotational_map import RotationalMap
-from field_map import FieldMap
 import datetime
 
-
 class FieldMapUI(QMainWindow):
+
     def __init__(self):
         super().__init__()
         uic.loadUi("FieldMapping/form.ui", self)
+
         self.setWindowTitle("Field Mapping v.1.0.0")
         self.generalDisplayLineEdit.setText("Welcome to Field Mapping v.1.0.0")
         # default map type is non-rotational
         self.rotationalMapFlag = False
         # default background subtraction is False
         self.backgroundSubtractionFlag = False
-        # the field mapping object, either FieldMap() or RotationalMap()
-        self.mapObj= None 
-        # NSCG3 object for three axis robot
-        self.threeAxisRobot = NSCG3("169.254.154.15", "XYZ", simulate=True)
-        # NSCG3 object for rotational robot
-        self.rotationalRobot = NSCG3("192.169.20.99", "XYZ", simulate=True)
-        # class for doing calculations
+        # the field mapping object, either NonRotationalMap() or RotationalMap()
+        self.mapObj = None 
         self.parametersSet = False
-        self.dataProcessing = FieldMapDataProcessing()
+
+
         self.mappingComplete = False 
         self.corner1Coord = np.array([0.0, 0.0, 0.0])
         self.corner2Coord = np.array([0.0, 0.0, 0.0])
@@ -50,7 +66,7 @@ class FieldMapUI(QMainWindow):
         self.nRotationsSpinBox.setMinimum(2)
 
         # display the current position on start
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
         # connect buttons to functions
@@ -109,11 +125,11 @@ class FieldMapUI(QMainWindow):
         Moves the three axis robot in the positive x direction.
         """
         moveValue = self.getDistancePerClick()
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         newX = currentPosition[0] + moveValue
         currentPosition[0] = newX
         moveArr = np.array([moveValue, 0, 0])
-        self.threeAxisRobot.moveRelative(moveArr)
+        self.mapObj.threeAxisRobot.moveRelative(moveArr)
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
     def moveXminus(self):
@@ -121,11 +137,11 @@ class FieldMapUI(QMainWindow):
         Moves the three axis robot in the minus x direction.
         """
         moveValue = self.getDistancePerClick()
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         newX = currentPosition[0] - moveValue
         currentPosition[0] = newX
         moveArr = np.array([-moveValue, 0, 0])
-        self.threeAxisRobot.moveRelative(moveArr)
+        self.mapObj.threeAxisRobot.moveRelative(moveArr)
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
     def moveYplus(self):
@@ -133,11 +149,11 @@ class FieldMapUI(QMainWindow):
         Moves the three axis robot in the positive y direction.
         """
         moveValue = self.getDistancePerClick()
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         newY = currentPosition[1] + moveValue
         currentPosition[1] = newY
         moveArr = np.array([0, moveValue, 0])
-        self.threeAxisRobot.moveRelative(moveArr)
+        self.mapObj.threeAxisRobot.moveRelative(moveArr)
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
     def moveYminus(self):
@@ -145,11 +161,11 @@ class FieldMapUI(QMainWindow):
         Moves the three axis robot in the minus y direction.
         """
         moveValue = self.getDistancePerClick()
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         newY = currentPosition[1] - moveValue
         currentPosition[1] = newY
         moveArr = np.array([0, -moveValue, 0])
-        self.threeAxisRobot.moveRelative(moveArr)
+        self.mapObj.threeAxisRobot.moveRelative(moveArr)
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
     def moveZplus(self):
@@ -157,11 +173,11 @@ class FieldMapUI(QMainWindow):
         Moves the three axis robot in the positive z direction.
         """
         moveValue = self.getDistancePerClick()
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         newZ = currentPosition[2] + moveValue
         currentPosition[2] = newZ
         moveArr = np.array([0, 0, moveValue])
-        self.threeAxisRobot.moveRelative(moveArr)
+        self.mapObj.threeAxisRobot.moveRelative(moveArr)
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
     def moveZminus(self):
@@ -169,25 +185,25 @@ class FieldMapUI(QMainWindow):
         Moves the three axis robot in the minus z direction.
         """
         moveValue = self.getDistancePerClick()
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         newZ = currentPosition[2] - moveValue
         currentPosition[2] = newZ
         moveArr = np.array([0, 0, -moveValue])
-        self.threeAxisRobot.moveRelative(moveArr)
+        self.mapObj.threeAxisRobot.moveRelative(moveArr)
         self.coordinateWindow.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
 
     def zeroPosition(self):
         """
         Zeros the three axis robot at the current position.
         """
-        self.threeAxisRobot.setZero()
+        self.mapObj.threeAxisRobot.setZero()
         self.clearDisplayValues()
 
     def setCorner1(self):
         """
         Sets the first corner for the plane or box mapping scheme.
         """
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         self.corner1Coord = currentPosition
         self.corner1BoxLineEdit.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
         self.corner1PlaneLineEdit.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
@@ -196,37 +212,28 @@ class FieldMapUI(QMainWindow):
         """
         Sets the second corner for the plane or box mapping scheme
         """
-        currentPosition = self.threeAxisRobot.position
+        currentPosition = self.mapObj.threeAxisRobot.position
         self.corner2Coord = currentPosition
         self.corner2BoxLineEdit.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
         self.corner2PlaneLineEdit.setText(f"{currentPosition[0]:.3f}, {currentPosition[1]:.3f}, {currentPosition[2]:.3f}")
         # xy plane should have the same z coordinate, so it's ok to set the label with the second corner
         # self.heightZPlaneLineEdit.setText(f"{self.corner2Coord[2]:.3f}")
 
-    def implementMappingObject(self, _simulate):
+    def implementMappingObject(self, simulate):
         """
         Implements the mapping object, either a rotational map or a normal map.
         Adds the mapping type and the parameters.
         """
-        self.mapObj = RotationalMap(simulate=_simulate) if self.rotationalMapFlag else FieldMap(simulate=_simulate)
+        self.mapObj = RotationalMap(simulate=simulate) if self.rotationalMapFlag else NonRotationalMap(simulate=simulate)
         
         # add the type of mapping scheme to the object
-        # rotational map
-        if self.rotationalMapFlag:
-            if self.mapType == 0:
-                self.mapObj.rotationalPlane(self.nRotations, self.corner1Coord, self.corner2Coord, self.nPointsX, self.nPointsY)
-            elif self.mapType == 1:
-                self.mapObj.rotationalBox(self.nRotations, self.corner1Coord, self.corner2Coord, self.nPointsX, self.nPointsY, self.nPointsZ)
-            elif self.mapType == 2:
-                self.mapObj.rotationalSphere(self.nRotations, self.radiusSphere, self.nPointsSphere, self.minHeightSphere)
-        # normal map
-        else:
-            if self.mapType == 0:
-                self.mapObj.plane(self.corner1Coord, self.corner2Coord, self.nPointsX, self.nPointsY)
-            elif self.mapType == 1:
-                self.mapObj.box(self.corner1Coord, self.corner2Coord, self.nPointsX, self.nPointsY, self.nPointsZ)
-            elif self.mapType == 2:
-                self.mapObj.sphere(self.radiusSphere, self.nPointsSphere, self.minHeightSphere)
+        if self.mapType == 0:
+            self.mapObj.xyplane(self.corner1Coord, self.corner2Coord, self.nPointsX, self.nPointsY)
+        elif self.mapType == 1:
+            self.mapObj.box(self.corner1Coord, self.corner2Coord, self.nPointsX, self.nPointsY, self.nPointsZ)
+        elif self.mapType == 2:
+            self.mapObj.sphere(self.radiusSphere, self.nPointsSphere, self.minHeightSphere)
+
 
     def clearDisplayValues(self):
         """
@@ -322,14 +329,9 @@ class FieldMapUI(QMainWindow):
             self.generalDisplayLineEdit.setText("Parameters are not set for the mapping scheme!")
             return
 
-        # clear any saved data
-        self.dataProcessing.clearData()
-
         # create the mapping object
         self.implementMappingObject(_simulate=True)
 
-        # store the coordinate data in the dataProcessing object
-        self.dataProcessing.importData(self.mapObj.points, type="coordinate")
 
         if self.backgroundSubtractionFlag:
             self.generalDisplayLineEdit.setText("Press the \"Ready\" button when the object is removed from the apparatus so mapping can begin...")
@@ -337,25 +339,18 @@ class FieldMapUI(QMainWindow):
             while not self.ready: pass
             self.generalDisplayLineEdit.setText("Beginning to map the background field...")
             self.mapObj.map(type="background")
-            self.mapObj.processData(type="background")
-            # store the measured data in the dataProcessing object
-            self.dataProcessing.importData(self.mapObj.backgroundData, type="background")
             self.generalDisplayLineEdit.setText("Background map has ended. Please insert the object to be mapped.\nPress the \"Ready\" button when the object is ready to be mapped.")
             self.ready = False
             while not self.ready: pass
             self.mapObj.map(type="object")
             # process data with transformations for lab frame and rotations
-            self.mapObj.processData(type="object")
-            # store the measured data in the dataProcessing object
-            self.dataProcessing.importData(self.mapObj.objectData, type="object")
             self.generalDisplayLineEdit.setText("Mapping is complete.")
             self.mappingComplete = True
         else:
             self.generalDisplayLineEdit.setText("Press the \"Ready\" button when the object is ready to be mapped.")
             self.ready = False
             while not self.ready: pass
-            self.mapObj.map()
-            self.mapObj.processData(type="object")
+            self.mapObj.map(type="object")
             self.generalDisplayLineEdit.setText("Mapping is complete.")
             self.mappingComplete = True    
 
@@ -369,12 +364,8 @@ class FieldMapUI(QMainWindow):
             self.generalDisplayLineEdit.setText("There is currently no stored data.\nPlease perform a mapping scheme and try again.")
             return
 
-        if self.algorithmType==0:
-            results = self.dataProcessing.lm()
-            self.generalDisplayLineEdit.setText(results)
-        elif self.algorithmType==1:
-            results = self.dataProcessing.lmfit()
-            self.generalDispalyLineEdit.setText(results)
+        results = self.mapObj.calculateDipoleMoment(method=self.algorithmType, background=self.backgroundSubtractionFlag)
+        self.generalDisplayLineEdit.setText(results)
     
     def saveData(self):
         """
@@ -384,31 +375,10 @@ class FieldMapUI(QMainWindow):
         if not self.mappingComplete:
             self.generalDisplayLineEdit.setText("The mapping routine has not been completed.\nPlease perform a mapping routine and try again.")
             return
-        now = datetime.now()
-        now = now.strftime("%d/%m/%Y_%H:%M:%S")
 
-        currentDirectory = os.getcwd()
-        if self.backgroundSubtractionFlag:
-            self.dataProcessing.exportDataBackground(
-                self.mapObj.objectData,
-                self.mapObj.backgroundData,
-                now
-            )
-        else:
-            self.dataProcess.exportDataNoBackground(
-                self.mapObj.objectData,
-                now
-            )
-            filenameObject = f"{currentDirectory}\\Data\\{now}_object.csv"
-            filenameBackground = f"{currentDirectory}\\Data\\{now}_background.csv"
-            os.makedirs(os.path.dirname(filenameObject), exist_ok=True) 
-            os.makedirs(os.path.dirname(filenameBackground), exist_ok=True)
-            self.dataProcessing.exportData(filenameBackground, type="background")
-            self.dataProcessing.exportData(filenameObject, type="object")
-        else:
-            filenameObject = f"{currentDirectory}\\Data\\{now}_object.csv"
-            os.makedirs(os.path.dirname(filenameObject), exist_ok=True) 
-            self.dataProcessing.exportData(filenameObject, type="object")
+        foldername = self.foldernameSaveLineEdit.text()
+        self.mapObj.saveData(foldername, self.backgroundSubtract)
+
         
 
 def main():
